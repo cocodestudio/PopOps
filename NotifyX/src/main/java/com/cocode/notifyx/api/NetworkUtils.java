@@ -12,7 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 /**
- * Minimal safe HTTP helpers for GET/POST returning JSON.
+ * Optimized HTTP helpers with better error handling.
  */
 public final class NetworkUtils {
     private NetworkUtils() {
@@ -28,15 +28,19 @@ public final class NetworkUtils {
             conn.setRequestMethod("POST");
             conn.setDoOutput(true);
             conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+
             if (headers != null) {
-                for (Map.Entry<String, String> e : headers.entrySet())
+                for (Map.Entry<String, String> e : headers.entrySet()) {
                     conn.setRequestProperty(e.getKey(), e.getValue());
+                }
             }
+
             byte[] payload = body != null ? body.toString().getBytes(StandardCharsets.UTF_8) : new byte[0];
             try (OutputStream os = conn.getOutputStream()) {
                 os.write(payload);
                 os.flush();
             }
+
             return readJson(conn);
         } finally {
             if (conn != null) conn.disconnect();
@@ -51,10 +55,13 @@ public final class NetworkUtils {
             conn.setConnectTimeout(10000);
             conn.setReadTimeout(10000);
             conn.setRequestMethod("GET");
+
             if (headers != null) {
-                for (Map.Entry<String, String> e : headers.entrySet())
+                for (Map.Entry<String, String> e : headers.entrySet()) {
                     conn.setRequestProperty(e.getKey(), e.getValue());
+                }
             }
+
             return readJson(conn);
         } finally {
             if (conn != null) conn.disconnect();
@@ -63,13 +70,62 @@ public final class NetworkUtils {
 
     private static JSONObject readJson(HttpURLConnection conn) throws Exception {
         int code = conn.getResponseCode();
-        InputStream is = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
-        if (is == null) throw new IllegalStateException("Empty response");
+
+        // OPTIMIZATION: Proper HTTP status code handling
+        if (code >= 400) {
+            // Read error response
+            InputStream errorStream = conn.getErrorStream();
+            String errorBody = "";
+
+            if (errorStream != null) {
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(errorStream))) {
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        sb.append(line);
+                    }
+                    errorBody = sb.toString();
+                }
+            }
+
+            // Throw exception with HTTP code in message
+            String errorMsg = "HTTP " + code;
+            if (code == 401) {
+                errorMsg += " Unauthorized - Token invalid or expired";
+            } else if (code == 403) {
+                errorMsg += " Forbidden - Access denied";
+            } else if (code == 404) {
+                errorMsg += " Not Found";
+            } else if (code >= 500) {
+                errorMsg += " Server Error";
+            }
+
+            if (!errorBody.isEmpty()) {
+                errorMsg += ": " + errorBody;
+            }
+
+            throw new Exception(errorMsg);
+        }
+
+        // Read success response
+        InputStream is = conn.getInputStream();
+        if (is == null) {
+            throw new IllegalStateException("Empty response");
+        }
+
         try (BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
             StringBuilder sb = new StringBuilder();
             String line;
-            while ((line = br.readLine()) != null) sb.append(line);
-            return new JSONObject(sb.toString());
+            while ((line = br.readLine()) != null) {
+                sb.append(line);
+            }
+
+            String responseBody = sb.toString();
+            if (responseBody.isEmpty()) {
+                throw new Exception("Empty response body");
+            }
+
+            return new JSONObject(responseBody);
         }
     }
 }

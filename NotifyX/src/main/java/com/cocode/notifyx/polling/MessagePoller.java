@@ -14,16 +14,17 @@ import org.json.JSONObject;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
- * Polls the backend for messages while the app is foregrounded.
- * Uses a HandlerThread + single-thread executor for network calls.
- * Implements exponential backoff (with jitter) via BackoffManager.
+ * Optimized Message Poller with smart token management.
+ * Only requests new token when needed, reducing API calls.
  */
 public final class MessagePoller {
     private static final String TAG = "NotifyX";
     private static final ExecutorService EXEC = Executors.newSingleThreadExecutor();
     private static Handler handler;
+    private static HandlerThread handlerThread;
     private static volatile boolean running = false;
 
     private MessagePoller() {
@@ -33,25 +34,17 @@ public final class MessagePoller {
         if (running) return;
         running = true;
 
-        HandlerThread ht = new HandlerThread("popup-sdk-poller");
-        ht.start();
-        handler = new Handler(ht.getLooper());
+        handlerThread = new HandlerThread("notifyx-poller");
+        handlerThread.start();
+        handler = new Handler(handlerThread.getLooper());
 
-        // schedule first run immediately
+        // Schedule first run immediately
         handler.post(pollRunnable);
+        Log.d(TAG, "Poller started");
     }
 
     private static long backoffBase() {
-        // A short base when background; it will be jittered by BackoffManager when nextDelay called
         return 30_000L;
-    }
-
-    public static synchronized void stop() {
-        running = false;
-        if (handler != null) {
-            handler.removeCallbacksAndMessages(null);
-        }
-        EXEC.shutdownNow();
     }
 
     private static final Runnable pollRunnable = new Runnable() {
@@ -59,33 +52,52 @@ public final class MessagePoller {
         public void run() {
             if (!running) return;
 
-
             if (AppState.isForeground()) {
                 EXEC.submit(() -> {
-                    Log.d(TAG, "Polling has started");
-                    long delay = BackoffManager.nextDelay();
+                    long nextDelay = BackoffManager.nextDelay();
+
                     try {
-                        // Attempt to obtain token (synchronously if necessary)
+                        // OPTIMIZED: getToken() now uses cache, won't make API call unless needed
                         String token = TokenManager.getToken();
+
                         if (token == null) {
-                            // no token available — increase backoff and reschedule
-                            Log.d(TAG, "No token available");
+                            // No token available after refresh attempt
+                            Log.w(TAG, "No token available, will retry on next poll");
                             BackoffManager.increase();
-                            handler.postDelayed(pollRunnable, delay);
+                            handler.postDelayed(pollRunnable, nextDelay);
                             return;
                         }
 
+                        // Log token status (for debugging)
+                        long timeUntilExpiry = TokenManager.getTimeUntilExpiry();
+                        if (timeUntilExpiry > 0) {
+                            Log.d(TAG, "Using cached token (expires in " + timeUntilExpiry + "s)");
+                        }
+
+                        // Fetch messages from API
                         JSONObject res = ApiClient.fetchMessages(token);
-                        // route the response (safe parsing inside)
+
+                        // Route the response (safe parsing inside)
                         MessageRouter.route(res);
 
-                        // success -> reset backoff and schedule next
+                        // Success -> reset backoff and schedule next
                         BackoffManager.reset();
                         handler.postDelayed(pollRunnable, BackoffManager.nextDelay());
+
                     } catch (Exception e) {
-                        // network or parsing failed -> increase backoff and reschedule
+                        String errorMsg = e.getMessage();
+
+                        // OPTIMIZATION: Handle 401 Unauthorized (token invalid)
+                        if (errorMsg != null && (errorMsg.contains("401") || errorMsg.contains("Unauthorized"))) {
+                            Log.w(TAG, "Token rejected by server (401), forcing refresh");
+                            TokenManager.forceRefresh();
+                        } else {
+                            Log.w(TAG, "Poll failed: " + errorMsg);
+                        }
+
+                        // Network or parsing failed -> increase backoff and reschedule
                         BackoffManager.increase();
-                        handler.postDelayed(pollRunnable, BackoffManager.nextDelay());
+                        handler.postDelayed(pollRunnable, nextDelay);
                     }
                 });
             } else {
@@ -96,5 +108,35 @@ public final class MessagePoller {
         }
     };
 
+    public static synchronized void stop() {
+        if (!running) return;
 
+        running = false;
+        Log.d(TAG, "Stopping poller...");
+
+        if (handler != null) {
+            handler.removeCallbacksAndMessages(null);
+        }
+
+        if (handlerThread != null) {
+            handlerThread.quitSafely();
+            try {
+                handlerThread.join(1000);
+            } catch (InterruptedException e) {
+                Log.w(TAG, "Interrupted while stopping handler thread");
+            }
+        }
+
+        EXEC.shutdown();
+        try {
+            if (!EXEC.awaitTermination(5, TimeUnit.SECONDS)) {
+                EXEC.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            EXEC.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+
+        Log.d(TAG, "Poller stopped");
+    }
 }
