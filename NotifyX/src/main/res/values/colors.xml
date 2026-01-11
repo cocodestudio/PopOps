@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="notifyx_blue">#0066FF</color>
+    <color name="notifyx_green">#10B981</color>
+    <color name="notifyx_red">#EF4444</color>
+    <color name="notifyx_text_primary">#0A1628</color>
+    <color name="notifyx_text_secondary">#64748B</color>
+    <color name="notifyx_bg_blue">#E6F0FF</color>
+    <color name="notifyx_bg_green">#D1FAE5</color>
+    <color name="notifyx_bg_red">#FEE2E2</color>
+    <color name="notify_toast_subtitle">#666666</color>
+    <color name="white">#FFFFFF</color>
+    <color name="neutral_icon">#666666</color>
+    <color name="info_icon">#2196F3</color>
+    <color name="success_icon">#4CAF50</color>
+    <color name="warning_icon">#FF9800</color>
+    <color name="error_icon">#F44336</color>
+</resources>
