@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace = 'com.cocode.notifyx.sdk'
+    namespace = 'com.cocode.popops.sdk'
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.cocode.notifyx.sdk"
+        applicationId = "com.cocode.popops.sdk"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

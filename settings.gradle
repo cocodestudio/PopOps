@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "NotifyX"
+rootProject.name = "PopOps SDK"
 include ':app'
-include ':NotifyX'
+include ':PopOps'
