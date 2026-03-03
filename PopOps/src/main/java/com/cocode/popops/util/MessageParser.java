@@ -33,6 +33,7 @@ public final class MessageParser {
             Message message = new Message();
 
             message.id = jsonObject.optString("id", null);
+            message.messageId = jsonObject.optString("messageId", String.valueOf(System.currentTimeMillis()));
             message.title = jsonObject.optString("title", "");
             message.body = jsonObject.optString("body", "");
             message.actionUrl = jsonObject.optString("actionUrl", null);

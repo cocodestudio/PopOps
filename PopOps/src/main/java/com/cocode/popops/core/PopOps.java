@@ -51,7 +51,9 @@ public final class PopOps {
             PopOpsEnvironment.init(ctx, projectId);
             SecureFileStore.init(ctx);
             PopupStateStore.init(ctx);
-            ActivityTracker.register(ctx);
+
+            // Pass the literal Activity to lock the foreground state instantly
+            ActivityTracker.register(activity);
 
             // Start listening for messages immediately
             MessagePoller.start();
@@ -63,9 +65,6 @@ public final class PopOps {
         }
     }
 
-    /**
-     * Get the activity where popups are allowed to show
-     */
     public static Activity getTargetActivity() {
         Activity activity = targetActivity.get();
         if (activity != null && !activity.isFinishing() && !activity.isDestroyed()) {
@@ -74,19 +73,12 @@ public final class PopOps {
         return null;
     }
 
-    /**
-     * Check if the current foreground activity is the target activity
-     */
     public static boolean isTargetActivityForeground() {
         Activity target = getTargetActivity();
         Activity current = ActivityTracker.getCurrentActivity();
         return target != null && target == current;
     }
 
-    /**
-     * Properly shutdown SDK and release resources.
-     * Call this in your activity's onDestroy() if needed.
-     */
     public static synchronized void shutdown() {
         if (!initialized) {
             Log.w(TAG, "Not initialized, nothing to shutdown");
@@ -102,7 +94,6 @@ public final class PopOps {
         Log.d(TAG, "PopOps SDK shutdown complete");
     }
 
-    // Topic convenience methods
     public static void subscribeToTopic(String topic) {
         if (!initialized) {
             Log.w(TAG, "SDK not initialized");

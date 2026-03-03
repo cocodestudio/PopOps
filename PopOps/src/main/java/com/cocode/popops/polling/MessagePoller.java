@@ -43,7 +43,7 @@ public final class MessagePoller {
     }
 
     private static long backoffBase() {
-        return 15_000L;
+        return 10_000L; // Lowered to 10 seconds for highly reactive dashboard testing
     }
 
     private static final Runnable pollRunnable = new Runnable() {

@@ -2,7 +2,6 @@ package com.cocode.popops.core;
 
 import android.app.Activity;
 import android.app.Application;
-import android.content.Context;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -20,10 +19,17 @@ public final class ActivityTracker implements Application.ActivityLifecycleCallb
     private ActivityTracker() {
     }
 
-    public static void register(Context ctx) {
+    public static void register(Activity activity) {
+        // CRITICAL SPEED FIX: Instantly lock in the activity so the very first immediate
+        // SDK poll doesn't incorrectly think the app is in the background and abort.
+        synchronized (LOCK) {
+            current = new WeakReference<>(activity);
+        }
+
         if (registered) return;
+
         try {
-            Application app = (Application) ctx.getApplicationContext();
+            Application app = activity.getApplication();
             app.registerActivityLifecycleCallbacks(new ActivityTracker());
             registered = true;
         } catch (Exception ignored) {
