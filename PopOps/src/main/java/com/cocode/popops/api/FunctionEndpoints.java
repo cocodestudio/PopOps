@@ -11,4 +11,9 @@ public final class FunctionEndpoints {
     public static String messagesUrl() {
         return "https://" + REGION + "-" + PROJECT + ".cloudfunctions.net/fetchMessages";
     }
+
+    // New Endpoint for Impression Tracking
+    public static String impressionUrl() {
+        return "https://" + REGION + "-" + PROJECT + ".cloudfunctions.net/recordImpression";
+    }
 }

@@ -48,4 +48,32 @@ public final class ApiClient {
         return NetworkUtils.getJson(url, headers);
 
     }
+
+    /**
+     * Securely sends an impression record to the backend.
+     */
+    public static void recordImpression(String messageId) throws Exception {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("X-Package", PopOpsEnvironment.packageName);
+
+        // Include the messageId in the hashing payload to prevent replay attacks
+        String payload = PopOpsEnvironment.projectId + "_" + PopOpsEnvironment.packageName + "_" + messageId + SDK_SECRET;
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] hash = digest.digest(payload.getBytes("UTF-8"));
+
+        StringBuilder hexString = new StringBuilder();
+        for (byte b : hash) {
+            String hex = Integer.toHexString(0xff & b);
+            if (hex.length() == 1) hexString.append('0');
+            hexString.append(hex);
+        }
+
+        headers.put("X-Signature", hexString.toString());
+
+        JSONObject body = new JSONObject();
+        body.put("projectId", PopOpsEnvironment.projectId);
+        body.put("messageId", messageId);
+
+        NetworkUtils.postJson(FunctionEndpoints.impressionUrl(), body, headers);
+    }
 }

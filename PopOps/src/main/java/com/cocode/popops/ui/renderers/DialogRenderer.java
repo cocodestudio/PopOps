@@ -16,6 +16,7 @@ import com.cocode.popops.model.Message;
 import com.cocode.popops.model.MessageType;
 import com.cocode.popops.model.UpdateMode;
 import com.cocode.popops.storage.PopupStateStore;
+import com.cocode.popops.tracking.ImpressionTracker;
 import com.cocode.popops.ui.factory.PresentationRenderer;
 import com.cocode.popops.ui.layoutrenderers.DialogLayoutRenderer;
 
@@ -36,8 +37,9 @@ public final class DialogRenderer implements PresentationRenderer {
         }
 
         // Mark as shown IMMEDIATELY to prevent re-showing
-        if (message.messageId != null) {
+        if (message.messageId != null && message.id != null) {
             PopupStateStore.markShown(message.messageId);
+            ImpressionTracker.track(message.id);
         }
 
         activity.runOnUiThread(() -> {
