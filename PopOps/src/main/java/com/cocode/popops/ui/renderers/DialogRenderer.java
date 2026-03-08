@@ -11,6 +11,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import com.cocode.popops.R;
 import com.cocode.popops.core.PopOps;
 import com.cocode.popops.model.Message;
 import com.cocode.popops.model.MessageType;
@@ -20,15 +21,14 @@ import com.cocode.popops.tracking.ImpressionTracker;
 import com.cocode.popops.ui.factory.PresentationRenderer;
 import com.cocode.popops.ui.layoutrenderers.DialogLayoutRenderer;
 
-/**
- * Shows dialogs ONLY on the target activity specified in PopOps.init()
- */
 public final class DialogRenderer implements PresentationRenderer {
     private static final String TAG = "DialogRenderer";
 
+    // In-memory session lock to prevent 10-second polling duplicates for Immediate Updates
+    private static String currentlyShowingMessageId = null;
+
     @Override
     public void render(Message message) {
-        // Get target activity instead of any foreground activity
         Activity activity = PopOps.getTargetActivity();
 
         if (activity == null) {
@@ -36,89 +36,103 @@ public final class DialogRenderer implements PresentationRenderer {
             return;
         }
 
-        // Mark as shown IMMEDIATELY to prevent re-showing
-        if (message.messageId != null && message.id != null) {
+        boolean isImmediateUpdate = (message.type == MessageType.APP_UPDATE && message.updateMode == UpdateMode.IMMEDIATE);
+
+        if (isImmediateUpdate) {
+            // For immediate updates, block it ONLY if it is currently visible on the screen
+            if (message.messageId.equals(currentlyShowingMessageId)) {
+                return;
+            }
+        } else {
+            // For normal messages, check persistent storage
+            if (PopupStateStore.isShown(message.messageId)) {
+                return;
+            }
+            // Mark normal messages as permanently shown
+            // (Note: use addShown or markShown depending on what your PopupStateStore.java uses)
             PopupStateStore.markShown(message.messageId);
-            ImpressionTracker.track(message.id);
         }
 
+        // 1. Lock the session for this specific message
+        currentlyShowingMessageId = message.messageId;
+
+        // 2. Track impression using the FIXED Firebase Node ID
+        ImpressionTracker.track(message.id);
+
         activity.runOnUiThread(() -> {
-            if (activity.isFinishing() || activity.isDestroyed()) return;
-
             try {
+                DialogLayoutRenderer layoutRenderer = new DialogLayoutRenderer();
+                int layoutResId = layoutRenderer.getLayout(message);
+
                 Dialog d = new Dialog(activity);
-                d.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
-
-                int layoutId = new DialogLayoutRenderer().getLayout(message);
-                d.setContentView(layoutId);
-
-                boolean isCancelable = !(message.type == MessageType.APP_UPDATE &&
-                                message.updateMode == UpdateMode.IMMEDIATE);
-                d.setCancelable(isCancelable);
+                d.setContentView(layoutResId);
 
                 if (d.getWindow() != null) {
                     d.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-                    d.getWindow().setLayout(
-                            (int) (activity.getResources().getDisplayMetrics().widthPixels * 0.90),
-                            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-                    );
                 }
 
-                TextView dialogTitle = d.findViewById(com.cocode.popops.R.id.dialog_title);
-                TextView dialogBody = d.findViewById(com.cocode.popops.R.id.dialog_message);
-                Button btnPrimary = d.findViewById(com.cocode.popops.R.id.btn_primary);
-                Button btnSecondary = d.findViewById(com.cocode.popops.R.id.btn_secondary);
-
-                if (dialogTitle != null) {
-                    dialogTitle.setText(message.title != null ? message.title : "");
-                }
-                if (dialogBody != null) {
-                    dialogBody.setText(message.body != null ? message.body : "");
-                }
-
-                if (message.type == MessageType.APP_UPDATE) {
-                    if (message.updateMode == UpdateMode.IMMEDIATE) {
-                        if (btnSecondary != null) btnSecondary.setVisibility(View.GONE);
-                        if (btnPrimary != null) {
-                            btnPrimary.setText("Update");
-                            btnPrimary.setOnClickListener(v -> {
-                                openUrlSafe(activity, message.actionUrl);
-                                d.dismiss();
-                            });
-                        }
-                    } else {
-                        if (btnPrimary != null) {
-                            btnPrimary.setText("Update");
-                            btnPrimary.setOnClickListener(v -> {
-                                openUrlSafe(activity, message.actionUrl);
-                                d.dismiss();
-                            });
-                        }
-                        if (btnSecondary != null) {
-                            btnSecondary.setText("Later");
-                            btnSecondary.setOnClickListener(v -> d.dismiss());
-                        }
+                // Release the session lock if the dialog is naturally dismissed
+                d.setOnDismissListener(dialog -> {
+                    if (message.messageId.equals(currentlyShowingMessageId)) {
+                        currentlyShowingMessageId = null;
                     }
+                });
+
+                // Apply strict non-cancelable behavior for IMMEDIATE app updates
+                if (isImmediateUpdate) {
+                    d.setCancelable(false);
+                    d.setCanceledOnTouchOutside(false);
                 } else {
-                    if (btnPrimary != null) {
-                        btnPrimary.setText("OK");
-                        btnPrimary.setOnClickListener(v -> {
-                            if (message.actionUrl != null && !message.actionUrl.isEmpty()) {
-                                openUrlSafe(activity, message.actionUrl);
-                            }
+                    d.setCancelable(true);
+                    d.setCanceledOnTouchOutside(true);
+                }
+
+                TextView title = d.findViewById(R.id.dialog_title);
+                TextView body = d.findViewById(R.id.dialog_message);
+                TextView versionLabel = d.findViewById(R.id.new_version_text);
+                Button btnPrimary = d.findViewById(R.id.btn_primary);
+                Button btnSecondary = d.findViewById(R.id.btn_secondary);
+
+                if (title != null) title.setText(message.title);
+                if (body != null) body.setText(message.body);
+
+                if (versionLabel != null) {
+                    versionLabel.setText(message.newAppVersion);
+                }
+
+                if (btnPrimary != null) {
+                    btnPrimary.setText("Update");
+                    btnPrimary.setOnClickListener(v -> {
+                        if (message.actionUrl != null && !message.actionUrl.isEmpty()) {
+                            openUrlSafe(activity, message.actionUrl);
+                        }
+
+                        // Immediate updates NEVER dismiss when primary button is clicked
+                        if (!isImmediateUpdate) {
                             d.dismiss();
-                        });
-                    }
-                    if (btnSecondary != null) {
+                        }
+                    });
+                }
+
+                if (btnSecondary != null) {
+                    if (isImmediateUpdate) {
                         btnSecondary.setVisibility(View.GONE);
+                    } else {
+                        btnSecondary.setVisibility(View.VISIBLE);
+                        btnSecondary.setText("Later");
+                        btnSecondary.setOnClickListener(v -> d.dismiss());
                     }
                 }
 
                 if (!activity.isFinishing() && !activity.isDestroyed()) {
                     d.show();
+                } else {
+                    // Release the lock if the activity died before we could show it
+                    currentlyShowingMessageId = null;
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Failed to show dialog", e);
+                currentlyShowingMessageId = null;
             }
         });
     }
@@ -126,6 +140,8 @@ public final class DialogRenderer implements PresentationRenderer {
     private void openUrlSafe(Activity activity, String url) {
         try {
             if (url == null || url.isEmpty()) return;
+
+            Log.d(TAG, url);
 
             Uri uri = Uri.parse(url);
             String scheme = uri.getScheme();

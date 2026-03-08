@@ -5,6 +5,7 @@ import android.util.Log;
 import com.cocode.popops.core.PopOpsEnvironment;
 import com.cocode.popops.model.Message;
 import com.cocode.popops.model.MessageType;
+import com.cocode.popops.model.UpdateMode;
 import com.cocode.popops.storage.PopupStateStore;
 import com.cocode.popops.ui.Renderer;
 import com.cocode.popops.util.MessageParser;
@@ -23,34 +24,70 @@ public final class MessageRouter {
     private MessageRouter() {
     }
 
+    /**
+     * Called automatically when the app opens or resumes to process any messages
+     * that were saved locally because they were scheduled in the future.
+     */
+    public static void checkScheduledMessages() {
+        try {
+            List<JSONObject> scheduled = PopupStateStore.getScheduledMessages();
+            for (JSONObject obj : scheduled) {
+                Message m = MessageParser.parseSingle(obj);
+                if (m != null && shouldShow(m)) {
+                    Log.d(TAG, "Routing saved scheduled message " + m.messageId + " to renderer.");
+                    Renderer.render(m);
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to check scheduled messages", e);
+        }
+    }
+
     public static void route(JSONObject response) {
         if (response == null) return;
         List<Message> messages = MessageParser.parseMessages(response);
         for (Message m : messages) {
             if (shouldShow(m)) {
-                Log.d(TAG, "Routing message " + m.id + " to renderer.");
+                Log.d(TAG, "Routing message " + m.messageId + " to renderer.");
                 Renderer.render(m);
             }
         }
     }
 
     private static boolean shouldShow(Message m) {
-        if (m == null || m.id == null) {
+        if (m == null || m.messageId == null) {
             Log.w(TAG, "Filtered: Message or Message ID is null.");
             return false;
         }
 
+        // 0. Scheduling Check
+        // If a message has timestamps, ensure it is within bounds.
+        if (m.startAt != null && m.endAt != null && m.startAt > 0 && m.endAt > 0) {
+            long now = System.currentTimeMillis();
+
+            if (now > m.endAt) {
+                Log.d(TAG, "Filtered: Message expired. Dropping locally.");
+                PopupStateStore.removeScheduledMessage(m.messageId);
+                return false;
+            } else if (now < m.startAt) {
+                Log.d(TAG, "Filtered: Message scheduled for future. Saving to local storage to show later.");
+                PopupStateStore.saveScheduledMessage(m.messageId, m.rawJson);
+                return false;
+            } else {
+                // Time is perfectly within bounds! Ensure it is removed from the local holding cache.
+                PopupStateStore.removeScheduledMessage(m.messageId);
+            }
+        }
+
         // 1. Topic Filtering
-        // If topic is absent, empty, "all", or literally "null", it bypasses the filter and shows to everyone.
         if (m.topic != null) {
             String safeTopic = m.topic.trim();
             if (!safeTopic.isEmpty() &&
                     !safeTopic.equalsIgnoreCase("all") &&
                     !safeTopic.equalsIgnoreCase("null")) {
 
-                // A specific topic was requested. Check if this device is subscribed.
                 if (!PopupStateStore.isSubscribed(safeTopic)) {
-                    Log.d(TAG, "Filtered: Device not subscribed to required topic -> '" + safeTopic + "'");
+                    Log.d(TAG, "Filtered: Device not subscribed to topic -> '" + safeTopic + "'");
                     return false;
                 }
             }
@@ -65,26 +102,29 @@ public final class MessageRouter {
                         !safeVersion.equalsIgnoreCase("null")) {
 
                     if (!safeVersion.equals(PopOpsEnvironment.appVersion)) {
-                        Log.d(TAG, "Filtered: Version mismatch. Target: '" + safeVersion + "', Current: '" + PopOpsEnvironment.appVersion + "'");
+                        Log.d(TAG, "Filtered: Version mismatch.");
                         return false;
                     }
                 }
             }
         }
 
-        // 3. App Update Filtering (For app-update messages)
+        // 3. App Update Filtering
         if (m.type == MessageType.APP_UPDATE) {
             if (!VersionUtils.isUpdateRequired(PopOpsEnvironment.appVersion, m.newAppVersion)) {
-                Log.d(TAG, "Filtered: App update not required. Current: '" + PopOpsEnvironment.appVersion + "', New: '" + m.newAppVersion + "'");
+                Log.d(TAG, "Filtered: App update not required.");
                 return false;
             }
         }
 
-        // 4. Dedupe check to ensure a message is only shown once.
-        // NOTE: This is the most common reason messages hide during testing!
-        if (PopupStateStore.isShown(m.messageId)) {
-            Log.d(TAG, "Filtered: Message " + m.messageId + " has already been shown previously on this device.");
-            return false;
+        // 4. Dedupe Check
+        boolean isImmediateUpdate = (m.type == MessageType.APP_UPDATE && m.updateMode == UpdateMode.IMMEDIATE);
+
+        if (!isImmediateUpdate) {
+            if (PopupStateStore.isShown(m.messageId)) {
+                Log.d(TAG, "Filtered: Message " + m.messageId + " has already been shown.");
+                return false;
+            }
         }
 
         return true;

@@ -25,6 +25,7 @@ import com.cocode.popops.R;
 import com.cocode.popops.core.PopOps;
 import com.cocode.popops.model.Message;
 import com.cocode.popops.storage.PopupStateStore;
+import com.cocode.popops.tracking.ImpressionTracker;
 import com.cocode.popops.ui.factory.PresentationRenderer;
 
 /**
@@ -51,98 +52,104 @@ public final class ToastRenderer implements PresentationRenderer {
 
         ViewGroup rootView = (ViewGroup) activity.getWindow().getDecorView();
 
-        activity.runOnUiThread(() -> {
-            if (activity.isFinishing() || activity.isDestroyed()) return;
+        if (!PopupStateStore.isShown(message.messageId)) {
 
-            try {
-                isToastVisible = true;
+            activity.runOnUiThread(() -> {
+                if (activity.isFinishing() || activity.isDestroyed()) return;
 
-                LayoutInflater inflater = LayoutInflater.from(activity);
-                View toastView = inflater.inflate(R.layout.toast_layout, null);
+                try {
+                    isToastVisible = true;
 
-                // Setup views
-                ImageView iconView = toastView.findViewById(R.id.toastIcon);
-                TextView titleView = toastView.findViewById(R.id.toastTitle);
-                TextView subtitleView = toastView.findViewById(R.id.toastSubtitle);
-                ImageView closeButton = toastView.findViewById(R.id.toastClose);
-                FrameLayout container = toastView.findViewById(R.id.toastContainer);
+                    LayoutInflater inflater = LayoutInflater.from(activity);
+                    View toastView = inflater.inflate(R.layout.toast_layout, null);
 
-                // Configure based on type
-                switch (message.type) {
-                    case INFORMATIONAL:
-                        container.setBackgroundResource(R.drawable.toast_bg_info);
-                        iconView.setImageResource(R.drawable.ic_bell);
-                        iconView.setColorFilter(ContextCompat.getColor(activity, R.color.popops_blue));
-                        break;
-                    case SUCCESS:
-                        container.setBackgroundResource(R.drawable.toast_bg_success);
-                        iconView.setImageResource(R.drawable.ic_check);
-                        iconView.setColorFilter(ContextCompat.getColor(activity, R.color.success_icon));
-                        break;
-                    case WARNING:
-                        container.setBackgroundResource(R.drawable.toast_bg_warning);
-                        iconView.setImageResource(R.drawable.ic_warning);
-                        iconView.setColorFilter(ContextCompat.getColor(activity, R.color.warning_icon));
-                        break;
-                    case ERROR:
-                        container.setBackgroundResource(R.drawable.toast_bg_error);
-                        iconView.setImageResource(R.drawable.ic_error);
-                        iconView.setColorFilter(ContextCompat.getColor(activity, R.color.error_icon));
-                        break;
-                }
+                    // Setup views
+                    ImageView iconView = toastView.findViewById(R.id.toastIcon);
+                    TextView titleView = toastView.findViewById(R.id.toastTitle);
+                    TextView subtitleView = toastView.findViewById(R.id.toastSubtitle);
+                    ImageView closeButton = toastView.findViewById(R.id.toastClose);
+                    FrameLayout container = toastView.findViewById(R.id.toastContainer);
 
-                titleView.setText(message.title);
-                if (message.body != null && !message.body.isEmpty()) {
-                    subtitleView.setText(message.body);
-                    subtitleView.setVisibility(View.VISIBLE);
-                } else {
-                    subtitleView.setVisibility(View.GONE);
-                }
-
-                // Setup layout params to position at top
-                FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        FrameLayout.LayoutParams.WRAP_CONTENT
-                );
-                params.gravity = Gravity.TOP;
-
-                int statusBarHeight = getStatusBarHeight(activity);
-                params.topMargin = statusBarHeight + dpToPx(16, activity);
-                params.leftMargin = dpToPx(16, activity);
-                params.rightMargin = dpToPx(16, activity);
-
-                // Add to root view
-                rootView.addView(toastView, params);
-
-                // Slide in animation
-                AnimationSet slideIn = new AnimationSet(true);
-                TranslateAnimation translateIn = new TranslateAnimation(0, 0, -300, 0);
-                translateIn.setDuration(300);
-                AlphaAnimation fadeIn = new AlphaAnimation(0.0f, 1.0f);
-                fadeIn.setDuration(300);
-                slideIn.addAnimation(translateIn);
-                slideIn.addAnimation(fadeIn);
-                toastView.startAnimation(slideIn);
-
-                // Close button functionality
-                View.OnClickListener dismissListener = v -> dismissToast(toastView, rootView);
-                closeButton.setOnClickListener(dismissListener);
-
-                // Auto dismiss after duration
-                new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                    if (toastView.getParent() != null) {
-                        dismissToast(toastView, rootView);
+                    // Configure based on type
+                    switch (message.type) {
+                        case INFORMATIONAL:
+                            container.setBackgroundResource(R.drawable.toast_bg_info);
+                            iconView.setImageResource(R.drawable.ic_bell);
+                            iconView.setColorFilter(ContextCompat.getColor(activity, R.color.popops_blue));
+                            break;
+                        case SUCCESS:
+                            container.setBackgroundResource(R.drawable.toast_bg_success);
+                            iconView.setImageResource(R.drawable.ic_check);
+                            iconView.setColorFilter(ContextCompat.getColor(activity, R.color.success_icon));
+                            break;
+                        case WARNING:
+                            container.setBackgroundResource(R.drawable.toast_bg_warning);
+                            iconView.setImageResource(R.drawable.ic_warning);
+                            iconView.setColorFilter(ContextCompat.getColor(activity, R.color.warning_icon));
+                            break;
+                        case ERROR:
+                            container.setBackgroundResource(R.drawable.toast_bg_error);
+                            iconView.setImageResource(R.drawable.ic_error);
+                            iconView.setColorFilter(ContextCompat.getColor(activity, R.color.error_icon));
+                            break;
                     }
-                }, 3000);
 
-                // Mark as shown immediately
-                PopupStateStore.markShown(message.id);
+                    titleView.setText(message.title);
+                    if (message.body != null && !message.body.isEmpty()) {
+                        subtitleView.setText(message.body);
+                        subtitleView.setVisibility(View.VISIBLE);
+                    } else {
+                        subtitleView.setVisibility(View.GONE);
+                    }
 
-            } catch (Exception e) {
-                Log.e(TAG, "Failed to show toast", e);
-                isToastVisible = false;
-            }
-        });
+                    // Setup layout params to position at top
+                    FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                            FrameLayout.LayoutParams.MATCH_PARENT,
+                            FrameLayout.LayoutParams.WRAP_CONTENT
+                    );
+                    params.gravity = Gravity.TOP;
+
+                    int statusBarHeight = getStatusBarHeight(activity);
+                    params.topMargin = statusBarHeight + dpToPx(16, activity);
+                    params.leftMargin = dpToPx(16, activity);
+                    params.rightMargin = dpToPx(16, activity);
+
+                    // Add to root view
+                    rootView.addView(toastView, params);
+
+                    // Slide in animation
+                    AnimationSet slideIn = new AnimationSet(true);
+                    TranslateAnimation translateIn = new TranslateAnimation(0, 0, -300, 0);
+                    translateIn.setDuration(300);
+                    AlphaAnimation fadeIn = new AlphaAnimation(0.0f, 1.0f);
+                    fadeIn.setDuration(300);
+                    slideIn.addAnimation(translateIn);
+                    slideIn.addAnimation(fadeIn);
+                    toastView.startAnimation(slideIn);
+
+                    // Close button functionality
+                    View.OnClickListener dismissListener = v -> dismissToast(toastView, rootView);
+                    closeButton.setOnClickListener(dismissListener);
+
+                    // Auto dismiss after duration
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        if (toastView.getParent() != null) {
+                            dismissToast(toastView, rootView);
+                        }
+                    }, 3000);
+
+                    // 1. Mark the dynamic ID as shown so it doesn't loop
+                    PopupStateStore.markShown(message.messageId);
+
+                    // 2. Track impression using the FIXED Firebase Node ID
+                    ImpressionTracker.track(message.id);
+
+                } catch (Exception e) {
+                    Log.e(TAG, "Failed to show toast", e);
+                    isToastVisible = false;
+                }
+            });
+        }
     }
 
     private void dismissToast(View toastView, ViewGroup rootView) {

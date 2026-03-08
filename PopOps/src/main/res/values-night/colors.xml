@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <color name="popops_md_theme_primary">#A8C7FF</color>
+    <color name="popops_md_theme_onPrimary">#003062</color>
+    <color name="popops_md_theme_primaryContainer">#004A8A</color>
+    <color name="popops_md_theme_onPrimaryContainer">#D9E7FF</color>
+    <!--  Secondary Colors  -->
+    <color name="popops_md_theme_secondary">#C7BFFF</color>
+    <color name="popops_md_theme_onSecondary">#352870</color>
+    <color name="popops_md_theme_secondaryContainer">#4D3FA8</color>
+    <color name="popops_md_theme_onSecondaryContainer">#E8E4FF</color>
+    <!--  Tertiary Colors  -->
+    <color name="popops_md_theme_tertiary">#79D7F0</color>
+    <color name="popops_md_theme_onTertiary">#00374A</color>
+    <color name="popops_md_theme_tertiaryContainer">#005168</color>
+    <color name="popops_md_theme_onTertiaryContainer">#B8EEFF</color>
+    <!--  Error Colors  -->
+    <color name="popops_md_theme_error">#FFB4AB</color>
+    <color name="popops_md_theme_errorContainer">#93000A</color>
+    <color name="popops_md_theme_onError">#690005</color>
+    <color name="popops_md_theme_onErrorContainer">#FFDAD6</color>
+    <!--  Background Colors  -->
+    <color name="popops_md_theme_background">#0A1628</color>
+    <color name="popops_md_theme_onBackground">#E3E2E6</color>
+    <!--  Surface Colors  -->
+    <color name="popops_md_theme_surface">#0A1628</color>
+    <color name="popops_md_theme_onSurface">#E3E2E6</color>
+    <color name="popops_md_theme_surfaceVariant">#101322</color>
+    <color name="popops_md_theme_onSurfaceVariant">#C4C7CF</color>
+    <!--  Surface Container Colors  -->
+    <color name="popops_md_theme_surfaceContainerLowest">#0F1419</color>
+    <color name="popops_md_theme_surfaceContainerLow">#1A1C1E</color>
+    <color name="popops_md_theme_surfaceContainer">#1E2023</color>
+    <color name="popops_md_theme_surfaceContainerHigh">#282A2D</color>
+    <color name="popops_md_theme_surfaceContainerHighest">#333538</color>
+    <!--  Outline Colors  -->
+    <color name="popops_md_theme_outline">#8E9099</color>
+    <color name="popops_md_theme_outlineVariant">#44474F</color>
+    <!--  Inverse Colors  -->
+    <color name="popops_md_theme_inverseSurface">#E3E2E6</color>
+    <color name="popops_md_theme_inverseOnSurface">#2F3033</color>
+    <color name="popops_md_theme_inversePrimary">#0066FF</color>
+    <!--  Surface Tint  -->
+    <color name="popops_md_theme_surfaceTint">#A8C7FF</color>
+    <!--  Scrim  -->
+    <color name="popops_md_theme_scrim">#000000</color>
+    <!--  Shadow  -->
+    <color name="popops_md_theme_shadow">#000000</color>
+    <!--  Semantic Colors (Dark)  -->
+    <color name="popops_semantic_success">#6EE7B7</color>
+    <color name="popops_semantic_success_container">#065F46</color>
+    <color name="popops_semantic_on_success">#064E3B</color>
+    <color name="popops_semantic_on_success_container">#D1FAE5</color>
+    <color name="popops_semantic_warning">#FCD34D</color>
+    <color name="popops_semantic_warning_container">#92400E</color>
+    <color name="popops_semantic_on_warning">#78350F</color>
+    <color name="popops_semantic_on_warning_container">#FEF3C7</color>
+
+</resources>

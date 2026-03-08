@@ -18,10 +18,12 @@ import java.util.concurrent.TimeUnit;
 /**
  * Optimized Message Poller.
  * Fetches messages directly, eliminating token generation latency entirely.
+ * Survives configuration changes and lifecycle recreations gracefully.
  */
 public final class MessagePoller {
     private static final String TAG = "PopOps";
-    private static final ExecutorService EXEC = Executors.newSingleThreadExecutor();
+
+    private static ExecutorService exec;
     private static Handler handler;
     private static HandlerThread handlerThread;
     private static volatile boolean running = false;
@@ -33,17 +35,25 @@ public final class MessagePoller {
         if (running) return;
         running = true;
 
+        if (exec == null || exec.isShutdown() || exec.isTerminated()) {
+            exec = Executors.newSingleThreadExecutor();
+        }
+
+        // INSTANT OFFLINE CHECK: Review saved scheduled messages immediately on app open.
+        if (exec != null && !exec.isShutdown()) {
+            exec.execute(MessageRouter::checkScheduledMessages);
+        }
+
         handlerThread = new HandlerThread("popops-poller");
         handlerThread.start();
         handler = new Handler(handlerThread.getLooper());
 
-        // Schedule first run immediately
         handler.post(pollRunnable);
         Log.d(TAG, "Poller started");
     }
 
     private static long backoffBase() {
-        return 10_000L; // Lowered to 10 seconds for highly reactive dashboard testing
+        return 10_000L;
     }
 
     private static final Runnable pollRunnable = new Runnable() {
@@ -52,33 +62,29 @@ public final class MessagePoller {
             if (!running) return;
 
             if (AppState.isForeground()) {
-                EXEC.execute(() -> {
-                    try {
-                        // Directly fetch messages without token delays
-                        JSONObject response = ApiClient.fetchMessages();
+                if (exec != null && !exec.isShutdown()) {
+                    exec.execute(() -> {
+                        try {
+                            JSONObject response = ApiClient.fetchMessages();
+                            MessageRouter.route(response);
 
-                        // Pass to router
-                        MessageRouter.route(response);
+                            BackoffManager.reset();
+                            if (running && handler != null) {
+                                handler.postDelayed(pollRunnable, backoffBase());
+                            }
+                        } catch (Exception e) {
+                            Log.w(TAG, "Poll failed: " + e.getMessage());
 
-                        // Success -> reset backoff and reschedule
-                        BackoffManager.reset();
-                        if (running) {
-                            handler.postDelayed(pollRunnable, backoffBase());
+                            BackoffManager.increase();
+                            if (running && handler != null) {
+                                handler.postDelayed(pollRunnable, BackoffManager.nextDelay());
+                            }
                         }
-                    } catch (Exception e) {
-                        Log.w(TAG, "Poll failed: " + e.getMessage());
-
-                        // Network or parsing failed -> increase backoff and reschedule
-                        BackoffManager.increase();
-                        if (running) {
-                            handler.postDelayed(pollRunnable, BackoffManager.nextDelay());
-                        }
-                    }
-                });
+                    });
+                }
             } else {
-                // Not foreground: don't poll often. Reset and reschedule after base delay.
                 BackoffManager.reset();
-                if (running) {
+                if (running && handler != null) {
                     handler.postDelayed(pollRunnable, backoffBase());
                 }
             }
@@ -93,6 +99,7 @@ public final class MessagePoller {
 
         if (handler != null) {
             handler.removeCallbacksAndMessages(null);
+            handler = null;
         }
 
         if (handlerThread != null) {
@@ -102,16 +109,20 @@ public final class MessagePoller {
             } catch (InterruptedException e) {
                 Log.w(TAG, "Interrupted while stopping handler thread");
             }
+            handlerThread = null;
         }
 
-        EXEC.shutdown();
-        try {
-            if (!EXEC.awaitTermination(5, TimeUnit.SECONDS)) {
-                EXEC.shutdownNow();
+        if (exec != null) {
+            exec.shutdown();
+            try {
+                if (!exec.awaitTermination(5, TimeUnit.SECONDS)) {
+                    exec.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                exec.shutdownNow();
+                Thread.currentThread().interrupt();
             }
-        } catch (InterruptedException e) {
-            EXEC.shutdownNow();
-            Thread.currentThread().interrupt();
+            exec = null;
         }
 
         Log.d(TAG, "Poller stopped");
