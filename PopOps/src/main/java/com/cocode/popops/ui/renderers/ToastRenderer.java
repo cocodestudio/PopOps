@@ -19,6 +19,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
 
 import com.cocode.popops.R;
@@ -68,29 +69,29 @@ public final class ToastRenderer implements PresentationRenderer {
                     TextView titleView = toastView.findViewById(R.id.toastTitle);
                     TextView subtitleView = toastView.findViewById(R.id.toastSubtitle);
                     ImageView closeButton = toastView.findViewById(R.id.toastClose);
-                    FrameLayout container = toastView.findViewById(R.id.toastContainer);
+                    ConstraintLayout container = toastView.findViewById(R.id.toastContainer);
 
                     // Configure based on type
                     switch (message.type) {
                         case INFORMATIONAL:
-                            container.setBackgroundResource(R.drawable.toast_bg_info);
+                            container.setBackgroundResource(R.drawable.toast_background_informational);
                             iconView.setImageResource(R.drawable.ic_bell);
-                            iconView.setColorFilter(ContextCompat.getColor(activity, R.color.popops_blue));
+                            iconView.setColorFilter(ContextCompat.getColor(activity, R.color.popops_md_theme_primary));
                             break;
                         case SUCCESS:
-                            container.setBackgroundResource(R.drawable.toast_bg_success);
+                            container.setBackgroundResource(R.drawable.toast_background_success);
                             iconView.setImageResource(R.drawable.ic_check);
-                            iconView.setColorFilter(ContextCompat.getColor(activity, R.color.success_icon));
+                            iconView.setColorFilter(ContextCompat.getColor(activity, R.color.popops_semantic_success));
                             break;
                         case WARNING:
-                            container.setBackgroundResource(R.drawable.toast_bg_warning);
+                            container.setBackgroundResource(R.drawable.toast_background_warning);
                             iconView.setImageResource(R.drawable.ic_warning);
-                            iconView.setColorFilter(ContextCompat.getColor(activity, R.color.warning_icon));
+                            iconView.setColorFilter(ContextCompat.getColor(activity, R.color.popops_semantic_warning));
                             break;
                         case ERROR:
-                            container.setBackgroundResource(R.drawable.toast_bg_error);
+                            container.setBackgroundResource(R.drawable.toast_background_error);
                             iconView.setImageResource(R.drawable.ic_error);
-                            iconView.setColorFilter(ContextCompat.getColor(activity, R.color.error_icon));
+                            iconView.setColorFilter(ContextCompat.getColor(activity, R.color.popops_md_theme_error));
                             break;
                     }
 

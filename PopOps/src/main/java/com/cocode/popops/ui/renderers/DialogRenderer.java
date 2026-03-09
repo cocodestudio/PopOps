@@ -1,15 +1,22 @@
 package com.cocode.popops.ui.renderers;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Dialog;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.PorterDuff;
 import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
+
+import androidx.annotation.ColorInt;
+import androidx.annotation.DrawableRes;
+import androidx.core.content.ContextCompat;
 
 import com.cocode.popops.R;
 import com.cocode.popops.core.PopOps;
@@ -19,7 +26,6 @@ import com.cocode.popops.model.UpdateMode;
 import com.cocode.popops.storage.PopupStateStore;
 import com.cocode.popops.tracking.ImpressionTracker;
 import com.cocode.popops.ui.factory.PresentationRenderer;
-import com.cocode.popops.ui.layoutrenderers.DialogLayoutRenderer;
 
 public final class DialogRenderer implements PresentationRenderer {
     private static final String TAG = "DialogRenderer";
@@ -48,8 +54,6 @@ public final class DialogRenderer implements PresentationRenderer {
             if (PopupStateStore.isShown(message.messageId)) {
                 return;
             }
-            // Mark normal messages as permanently shown
-            // (Note: use addShown or markShown depending on what your PopupStateStore.java uses)
             PopupStateStore.markShown(message.messageId);
         }
 
@@ -61,11 +65,10 @@ public final class DialogRenderer implements PresentationRenderer {
 
         activity.runOnUiThread(() -> {
             try {
-                DialogLayoutRenderer layoutRenderer = new DialogLayoutRenderer();
-                int layoutResId = layoutRenderer.getLayout(message);
-
                 Dialog d = new Dialog(activity);
-                d.setContentView(layoutResId);
+
+                // Strictly use the single unified dialog layout
+                d.setContentView(R.layout.dialog_layout);
 
                 if (d.getWindow() != null) {
                     d.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
@@ -89,25 +92,114 @@ public final class DialogRenderer implements PresentationRenderer {
 
                 TextView title = d.findViewById(R.id.dialog_title);
                 TextView body = d.findViewById(R.id.dialog_message);
-                TextView versionLabel = d.findViewById(R.id.new_version_text);
+
+                // Target the exact new version text ID you provided
+                TextView versionText = d.findViewById(R.id.new_version_text);
+
                 Button btnPrimary = d.findViewById(R.id.btn_primary);
                 Button btnSecondary = d.findViewById(R.id.btn_secondary);
 
-                if (title != null) title.setText(message.title);
-                if (body != null) body.setText(message.body);
+                androidx.cardview.widget.CardView cardTop = d.findViewById(R.id.card_view_top);
+                ImageView iconTop = null;
 
-                if (versionLabel != null) {
-                    versionLabel.setText(message.newAppVersion);
+                if (cardTop != null && cardTop.getChildCount() > 0) {
+                    View child = cardTop.getChildAt(0);
+                    if (child instanceof ImageView) {
+                        iconTop = (ImageView) child;
+                    }
+                }
+
+                if (title != null) title.setText(message.title);
+
+                String finalBodyText = message.body;
+
+                // --- DYNAMIC STYLING VARIABLES ---
+
+                // 1. Set explicit Drawables using @DrawableRes to silence lint errors
+                @DrawableRes int primaryBtnBgRes = R.drawable.button_primary_blue;
+                @DrawableRes int secondaryBtnBgRes = R.drawable.button_secondary_blue;
+                @DrawableRes int iconRes;
+
+                // 2. Set explicit Resolved Colors using @ColorInt to silence lint errors
+                @ColorInt int primaryBtnTextColor = ContextCompat.getColor(activity, R.color.popops_md_theme_onPrimary);
+                @ColorInt int secondaryBtnTextColor = ContextCompat.getColor(activity, R.color.popops_md_theme_onPrimaryContainer);
+                @ColorInt int cardBgColor = ContextCompat.getColor(activity, R.color.popops_md_theme_primaryContainer);
+                @ColorInt int iconTint = ContextCompat.getColor(activity, R.color.popops_md_theme_onPrimaryContainer);
+
+                String primaryText;
+                String secondaryText = "";
+                boolean showSecondary = false;
+
+                // --- APPLY LOGIC BASED ON MESSAGE TYPE ---
+                if (message.type == MessageType.APP_UPDATE) {
+                    primaryText = "Update Now";
+                    secondaryText = "Later";
+                    // Only show secondary button if the update is flexible
+                    showSecondary = (message.updateMode == UpdateMode.FLEXIBLE);
+
+                    @SuppressLint("DiscouragedApi")
+                    int downloadRes = activity.getResources().getIdentifier("ic_download", "drawable", activity.getPackageName());
+                    iconRes = (downloadRes != 0) ? downloadRes : R.drawable.ic_info;
+
+                    // Handle Version Text Visibility
+                    if (versionText != null) {
+                        versionText.setVisibility(View.VISIBLE);
+                        versionText.setText("v" + message.newAppVersion);
+                    } else {
+                        finalBodyText = finalBodyText + "\n\nNew Version: v" + message.newAppVersion;
+                    }
+
+                } else if (message.type == MessageType.WARNING) {
+                    primaryText = "Dismiss";
+
+                    primaryBtnBgRes = R.drawable.button_primary_red;
+                    primaryBtnTextColor = Color.WHITE; // Color.WHITE intrinsically returns a @ColorInt
+
+                    cardBgColor = ContextCompat.getColor(activity, R.color.popops_bg_red);
+                    iconTint = ContextCompat.getColor(activity, R.color.popops_red);
+                    iconRes = R.drawable.ic_warning;
+
+                    if (versionText != null) versionText.setVisibility(View.GONE);
+
+                } else {
+                    // INFORMATIONAL (and fallback)
+                    primaryText = "Dismiss";
+
+                    primaryBtnBgRes = R.drawable.button_primary_green;
+                    primaryBtnTextColor = Color.WHITE; // Color.WHITE intrinsically returns a @ColorInt
+
+                    cardBgColor = ContextCompat.getColor(activity, R.color.popops_semantic_success_container);
+                    iconTint = ContextCompat.getColor(activity, R.color.popops_semantic_on_success_container);
+                    iconRes = R.drawable.ic_info;
+
+                    if (versionText != null) versionText.setVisibility(View.GONE);
+                }
+
+                // --- APPLY RENDERED STYLES TO VIEWS ---
+                if (body != null) {
+                    body.setText(finalBodyText);
+                }
+
+                if (cardTop != null) {
+                    cardTop.setCardBackgroundColor(cardBgColor);
+                }
+
+                if (iconTop != null) {
+                    iconTop.setImageResource(iconRes);
+                    iconTop.setColorFilter(iconTint, PorterDuff.Mode.SRC_IN);
                 }
 
                 if (btnPrimary != null) {
-                    btnPrimary.setText("Update");
+                    btnPrimary.setText(primaryText);
+                    btnPrimary.setBackgroundResource(primaryBtnBgRes);
+                    // Pass the color directly; the @ColorInt annotation proves to Studio it is already resolved
+                    btnPrimary.setTextColor(primaryBtnTextColor);
                     btnPrimary.setOnClickListener(v -> {
                         if (message.actionUrl != null && !message.actionUrl.isEmpty()) {
                             openUrlSafe(activity, message.actionUrl);
                         }
 
-                        // Immediate updates NEVER dismiss when primary button is clicked
+                        // Immediate updates NEVER dismiss when the primary button is clicked
                         if (!isImmediateUpdate) {
                             d.dismiss();
                         }
@@ -115,19 +207,20 @@ public final class DialogRenderer implements PresentationRenderer {
                 }
 
                 if (btnSecondary != null) {
-                    if (isImmediateUpdate) {
-                        btnSecondary.setVisibility(View.GONE);
-                    } else {
+                    if (showSecondary) {
                         btnSecondary.setVisibility(View.VISIBLE);
-                        btnSecondary.setText("Later");
+                        btnSecondary.setText(secondaryText);
+                        btnSecondary.setBackgroundResource(secondaryBtnBgRes);
+                        btnSecondary.setTextColor(secondaryBtnTextColor);
                         btnSecondary.setOnClickListener(v -> d.dismiss());
+                    } else {
+                        btnSecondary.setVisibility(View.GONE);
                     }
                 }
 
                 if (!activity.isFinishing() && !activity.isDestroyed()) {
                     d.show();
                 } else {
-                    // Release the lock if the activity died before we could show it
                     currentlyShowingMessageId = null;
                 }
             } catch (Exception e) {
