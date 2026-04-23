@@ -4,7 +4,7 @@
   <a href="https://jitpack.io/#cocodestudio/PopOps"><img src="https://jitpack.io/v/cocodestudio/PopOps.svg" alt="JitPack" /></a>
   <a href="https://android-arsenal.com/api?level=26"><img src="https://img.shields.io/badge/API-26%2B-brightgreen.svg" alt="API Level" /></a>
   <a href="https://github.com/cocodestudio/PoOps/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License" /></a>
-  <a href="https://github.com/cocodestudio/PopOps/releases"><img src="https://img.shields.io/github/v/release/cocodestudio/PoOps" alt="Latest Release" /></a>
+  <a href="https://github.com/cocodestudio/PopOps/releases"><img src="https://img.shields.io/github/v/release/cocodestudio/PopOps" alt="Latest Release" /></a>
   <img src="https://img.shields.io/badge/Language-Java-orange.svg" alt="Java" />
 </p>
 
@@ -23,7 +23,7 @@ Add the following dependency to your `build.gradle` file:
 
 ```gradle
 dependencies {
-    implementation "com.github.cocodestudio:PopOps:1.0.0"
+    implementation "com.github.cocodestudio:PopOps:1.0.1"
 }
 ```
 
