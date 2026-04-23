@@ -16,10 +16,9 @@ import android.view.animation.AnimationSet;
 import android.view.animation.TranslateAnimation;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
-
-import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
 
 import com.cocode.popops.R;
@@ -38,7 +37,6 @@ public final class ToastRenderer implements PresentationRenderer {
 
     @Override
     public void render(Message message) {
-        // Get target activity instead of any foreground activity
         Activity activity = PopOps.getTargetActivity();
 
         if (activity == null) {
@@ -69,7 +67,9 @@ public final class ToastRenderer implements PresentationRenderer {
                     TextView titleView = toastView.findViewById(R.id.toastTitle);
                     TextView subtitleView = toastView.findViewById(R.id.toastSubtitle);
                     ImageView closeButton = toastView.findViewById(R.id.toastClose);
-                    ConstraintLayout container = toastView.findViewById(R.id.toastContainer);
+
+                    // Layout Change: Cast to RelativeLayout instead of ConstraintLayout
+                    RelativeLayout container = toastView.findViewById(R.id.toastContainer);
 
                     // Configure based on type
                     switch (message.type) {
@@ -103,7 +103,7 @@ public final class ToastRenderer implements PresentationRenderer {
                         subtitleView.setVisibility(View.GONE);
                     }
 
-                    // Setup layout params to position at top
+                    // Setup layout params (Parent is always DecorView's FrameLayout)
                     FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
                             FrameLayout.LayoutParams.MATCH_PARENT,
                             FrameLayout.LayoutParams.WRAP_CONTENT
@@ -115,7 +115,6 @@ public final class ToastRenderer implements PresentationRenderer {
                     params.leftMargin = dpToPx(16, activity);
                     params.rightMargin = dpToPx(16, activity);
 
-                    // Add to root view
                     rootView.addView(toastView, params);
 
                     // Slide in animation
@@ -128,21 +127,15 @@ public final class ToastRenderer implements PresentationRenderer {
                     slideIn.addAnimation(fadeIn);
                     toastView.startAnimation(slideIn);
 
-                    // Close button functionality
-                    View.OnClickListener dismissListener = v -> dismissToast(toastView, rootView);
-                    closeButton.setOnClickListener(dismissListener);
+                    closeButton.setOnClickListener(v -> dismissToast(toastView, rootView));
 
-                    // Auto dismiss after duration
                     new Handler(Looper.getMainLooper()).postDelayed(() -> {
                         if (toastView.getParent() != null) {
                             dismissToast(toastView, rootView);
                         }
                     }, 3000);
 
-                    // 1. Mark the dynamic ID as shown so it doesn't loop
                     PopupStateStore.markShown(message.messageId);
-
-                    // 2. Track impression using the FIXED Firebase Node ID
                     ImpressionTracker.track(message.id);
 
                 } catch (Exception e) {
@@ -163,22 +156,15 @@ public final class ToastRenderer implements PresentationRenderer {
         slideOut.addAnimation(fadeOut);
 
         slideOut.setAnimationListener(new Animation.AnimationListener() {
-            @Override
-            public void onAnimationStart(Animation animation) {
-            }
-
-            @Override
-            public void onAnimationEnd(Animation animation) {
+            @Override public void onAnimationStart(Animation animation) {}
+            @Override public void onAnimationRepeat(Animation animation) {}
+            @Override public void onAnimationEnd(Animation animation) {
                 try {
                     rootView.removeView(toastView);
                 } catch (Exception e) {
                     Log.e(TAG, "Failed to remove toast view", e);
                 }
                 isToastVisible = false;
-            }
-
-            @Override
-            public void onAnimationRepeat(Animation animation) {
             }
         });
 
@@ -193,9 +179,6 @@ public final class ToastRenderer implements PresentationRenderer {
     private int getStatusBarHeight(Context context) {
         @SuppressLint("InternalInsetResource")
         int resourceId = context.getResources().getIdentifier("status_bar_height", "dimen", "android");
-        if (resourceId > 0) {
-            return context.getResources().getDimensionPixelSize(resourceId);
-        }
-        return 0;
+        return (resourceId > 0) ? context.getResources().getDimensionPixelSize(resourceId) : 0;
     }
 }

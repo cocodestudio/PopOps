@@ -7,9 +7,11 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -93,17 +95,18 @@ public final class DialogRenderer implements PresentationRenderer {
                 TextView title = d.findViewById(R.id.dialog_title);
                 TextView body = d.findViewById(R.id.dialog_message);
 
-                // Target the exact new version text ID you provided
+                // Target the exact new version text ID provided
                 TextView versionText = d.findViewById(R.id.new_version_text);
 
                 Button btnPrimary = d.findViewById(R.id.btn_primary);
                 Button btnSecondary = d.findViewById(R.id.btn_secondary);
 
-                androidx.cardview.widget.CardView cardTop = d.findViewById(R.id.card_view_top);
+                // Layout Change: CardView removed, using FrameLayout/View instead
+                View cardTop = d.findViewById(R.id.card_view_replacement);
                 ImageView iconTop = null;
 
-                if (cardTop != null && cardTop.getChildCount() > 0) {
-                    View child = cardTop.getChildAt(0);
+                if (cardTop instanceof ViewGroup && ((ViewGroup) cardTop).getChildCount() > 0) {
+                    View child = ((ViewGroup) cardTop).getChildAt(0);
                     if (child instanceof ImageView) {
                         iconTop = (ImageView) child;
                     }
@@ -115,12 +118,12 @@ public final class DialogRenderer implements PresentationRenderer {
 
                 // --- DYNAMIC STYLING VARIABLES ---
 
-                // 1. Set explicit Drawables using @DrawableRes to silence lint errors
+                // 1. Set explicit Drawables using @DrawableRes
                 @DrawableRes int primaryBtnBgRes = R.drawable.button_primary_blue;
                 @DrawableRes int secondaryBtnBgRes = R.drawable.button_secondary_blue;
                 @DrawableRes int iconRes;
 
-                // 2. Set explicit Resolved Colors using @ColorInt to silence lint errors
+                // 2. Set explicit Resolved Colors using @ColorInt
                 @ColorInt int primaryBtnTextColor = ContextCompat.getColor(activity, R.color.popops_md_theme_onPrimary);
                 @ColorInt int secondaryBtnTextColor = ContextCompat.getColor(activity, R.color.popops_md_theme_onPrimaryContainer);
                 @ColorInt int cardBgColor = ContextCompat.getColor(activity, R.color.popops_md_theme_primaryContainer);
@@ -134,14 +137,12 @@ public final class DialogRenderer implements PresentationRenderer {
                 if (message.type == MessageType.APP_UPDATE) {
                     primaryText = "Update Now";
                     secondaryText = "Later";
-                    // Only show secondary button if the update is flexible
                     showSecondary = (message.updateMode == UpdateMode.FLEXIBLE);
 
                     @SuppressLint("DiscouragedApi")
                     int downloadRes = activity.getResources().getIdentifier("ic_download", "drawable", activity.getPackageName());
                     iconRes = (downloadRes != 0) ? downloadRes : R.drawable.ic_info;
 
-                    // Handle Version Text Visibility
                     if (versionText != null) {
                         versionText.setVisibility(View.VISIBLE);
                         versionText.setText("v" + message.newAppVersion);
@@ -151,10 +152,8 @@ public final class DialogRenderer implements PresentationRenderer {
 
                 } else if (message.type == MessageType.WARNING) {
                     primaryText = "Dismiss";
-
                     primaryBtnBgRes = R.drawable.button_primary_red;
-                    primaryBtnTextColor = Color.WHITE; // Color.WHITE intrinsically returns a @ColorInt
-
+                    primaryBtnTextColor = Color.WHITE;
                     cardBgColor = ContextCompat.getColor(activity, R.color.popops_bg_red);
                     iconTint = ContextCompat.getColor(activity, R.color.popops_red);
                     iconRes = R.drawable.ic_warning;
@@ -162,12 +161,9 @@ public final class DialogRenderer implements PresentationRenderer {
                     if (versionText != null) versionText.setVisibility(View.GONE);
 
                 } else {
-                    // INFORMATIONAL (and fallback)
                     primaryText = "Dismiss";
-
                     primaryBtnBgRes = R.drawable.button_primary_green;
-                    primaryBtnTextColor = Color.WHITE; // Color.WHITE intrinsically returns a @ColorInt
-
+                    primaryBtnTextColor = Color.WHITE;
                     cardBgColor = ContextCompat.getColor(activity, R.color.popops_semantic_success_container);
                     iconTint = ContextCompat.getColor(activity, R.color.popops_semantic_on_success_container);
                     iconRes = R.drawable.ic_info;
@@ -180,8 +176,10 @@ public final class DialogRenderer implements PresentationRenderer {
                     body.setText(finalBodyText);
                 }
 
-                if (cardTop != null) {
-                    cardTop.setCardBackgroundColor(cardBgColor);
+                // Layout Change: Manual color application to the circular drawable background
+                if (cardTop != null && cardTop.getBackground() instanceof GradientDrawable) {
+                    GradientDrawable shape = (GradientDrawable) cardTop.getBackground();
+                    shape.setColor(cardBgColor);
                 }
 
                 if (iconTop != null) {
@@ -192,14 +190,12 @@ public final class DialogRenderer implements PresentationRenderer {
                 if (btnPrimary != null) {
                     btnPrimary.setText(primaryText);
                     btnPrimary.setBackgroundResource(primaryBtnBgRes);
-                    // Pass the color directly; the @ColorInt annotation proves to Studio it is already resolved
                     btnPrimary.setTextColor(primaryBtnTextColor);
                     btnPrimary.setOnClickListener(v -> {
                         if (message.actionUrl != null && !message.actionUrl.isEmpty()) {
                             openUrlSafe(activity, message.actionUrl);
                         }
 
-                        // Immediate updates NEVER dismiss when the primary button is clicked
                         if (!isImmediateUpdate) {
                             d.dismiss();
                         }
@@ -233,23 +229,12 @@ public final class DialogRenderer implements PresentationRenderer {
     private void openUrlSafe(Activity activity, String url) {
         try {
             if (url == null || url.isEmpty()) return;
-
-            Log.d(TAG, url);
-
             Uri uri = Uri.parse(url);
             String scheme = uri.getScheme();
             String host = uri.getHost();
-
-            if (scheme == null || host == null) {
-                Log.w(TAG, "Invalid URL: missing scheme or host");
+            if (scheme == null || host == null || (!scheme.equals("http") && !scheme.equals("https"))) {
                 return;
             }
-
-            if (!scheme.equals("http") && !scheme.equals("https")) {
-                Log.w(TAG, "Blocked non-HTTP(S) URL: " + scheme);
-                return;
-            }
-
             Intent i = new Intent(Intent.ACTION_VIEW, uri);
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             activity.startActivity(i);

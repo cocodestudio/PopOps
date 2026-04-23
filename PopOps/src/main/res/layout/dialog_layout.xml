@@ -1,51 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@drawable/rounded_dialog_background"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
     android:padding="26dp">
 
-    <androidx.cardview.widget.CardView
-        android:id="@+id/card_view_top"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
-        app:cardBackgroundColor="@color/popops_md_theme_primaryContainer"
-        app:cardCornerRadius="999dp"
-        app:cardElevation="0dp"
-        app:cardMaxElevation="0dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
-
-        <ImageView
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:importantForAccessibility="no"
-            android:padding="16dp"
-            android:src="@drawable/ic_download"
-            app:tint="@color/popops_md_theme_onPrimaryContainer" />
-
-    </androidx.cardview.widget.CardView>
-
-    <TextView
-        android:id="@+id/new_version_text"
+    <RelativeLayout
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:background="@drawable/new_version_label"
-        android:fontFamily="sans-serif-black"
-        android:paddingHorizontal="5dp"
-        android:paddingVertical="2dp"
-        android:text="v1.1.2"
-        android:textColor="@color/popops_md_theme_onPrimary"
-        android:textSize="8sp"
-        app:layout_constraintBaseline_toBottomOf="@id/card_view_top"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        tools:ignore="HardcodedText,SmallSp" />
+        android:layout_height="wrap_content">
 
-    <!-- Title -->
+        <FrameLayout
+            android:id="@+id/card_view_replacement"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:background="@drawable/circle_primary_container">
+
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:importantForAccessibility="no"
+                android:padding="16dp"
+                android:src="@drawable/ic_download"
+                app:tint="@color/popops_md_theme_onPrimaryContainer" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/new_version_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignBottom="@id/card_view_replacement"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="4dp"
+            android:background="@drawable/new_version_label"
+            android:fontFamily="sans-serif-black"
+            android:paddingHorizontal="5dp"
+            android:paddingVertical="2dp"
+            android:text="v1.1.2"
+            android:textColor="@color/popops_md_theme_onPrimary"
+            android:textSize="8sp"
+            tools:ignore="HardcodedText,SmallSp" />
+    </RelativeLayout>
+
     <TextView
         android:id="@+id/dialog_title"
         android:layout_width="wrap_content"
@@ -55,12 +54,8 @@
         android:text="@string/announcement_title"
         android:textColor="@color/popops_md_theme_onSurface"
         android:textSize="15sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/card_view_top" />
+        android:textStyle="bold" />
 
-    <!-- Message -->
     <TextView
         android:id="@+id/dialog_message"
         android:layout_width="wrap_content"
@@ -72,52 +67,46 @@
         android:text="@string/announcement_description"
         android:textColor="@color/popops_md_theme_outline"
         android:textSize="12sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/dialog_title"
         tools:ignore="TextContrastCheck" />
 
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/btn_primary"
-        android:layout_width="0dp"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="22dp"
-        android:background="@drawable/button_primary_blue"
-        android:elevation="0dp"
-        android:gravity="center"
-        android:padding="13dp"
-        android:stateListAnimator="@null"
-        android:text="@string/announcement_btn_primary"
-        android:textAllCaps="false"
-        android:textColor="@color/popops_md_theme_onPrimary"
-        android:textSize="11sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@id/btn_secondary"
-        app:layout_constraintTop_toBottomOf="@id/dialog_message"
-        tools:ignore="VisualLintButtonSize" />
+        android:orientation="horizontal">
 
-    <!-- Secondary Button -->
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/btn_secondary"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="0dp"
-        android:layout_marginTop="22dp"
-        android:layout_marginEnd="10dp"
-        android:background="@drawable/button_secondary_blue"
-        android:elevation="0dp"
-        android:gravity="center"
-        android:padding="13dp"
-        android:stateListAnimator="@null"
-        android:text="@string/announcement_btn_secondary"
-        android:textAllCaps="false"
-        android:textColor="@color/popops_md_theme_onPrimaryContainer"
-        android:textSize="11sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toStartOf="@id/btn_primary"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/dialog_message"
-        tools:ignore="VisualLintButtonSize" />
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_secondary"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="10dp"
+            android:layout_weight="1"
+            android:background="@drawable/button_secondary_blue"
+            android:gravity="center"
+            android:padding="13dp"
+            android:stateListAnimator="@null"
+            android:text="@string/announcement_btn_secondary"
+            android:textAllCaps="false"
+            android:textColor="@color/popops_md_theme_onPrimaryContainer"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            tools:ignore="VisualLintButtonSize" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_primary"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@drawable/button_primary_blue"
+            android:gravity="center"
+            android:padding="13dp"
+            android:stateListAnimator="@null"
+            android:text="@string/announcement_btn_primary"
+            android:textAllCaps="false"
+            android:textColor="@color/popops_md_theme_onPrimary"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            tools:ignore="VisualLintButtonSize" />
+    </LinearLayout>
+
+</LinearLayout>

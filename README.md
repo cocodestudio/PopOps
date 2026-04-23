@@ -10,6 +10,8 @@
 
 PopOps is a powerful, remote in-app messaging and popup management SDK designed for Android developers. It allows you to communicate with your users in real-time by triggering targeted messages and popups remotely without requiring app updates.
 
+Don't have an app ? [Download Now](https://play.google.com/store/apps/details?id=com.cocode.popops)
+
 ## Features
 
 - **Remote Messaging:** Deploy and manage in-app messages from a centralized dashboard.
@@ -23,7 +25,7 @@ Add the following dependency to your `build.gradle` file:
 
 ```gradle
 dependencies {
-    implementation "com.github.cocodestudio:PopOps:1.0.1"
+    implementation "com.github.cocodestudio:PopOps:1.0.2"
 }
 ```
 
