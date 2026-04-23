@@ -3,6 +3,7 @@ package com.cocode.popops.router;
 import android.util.Log;
 
 import com.cocode.popops.core.PopOpsEnvironment;
+import com.cocode.popops.core.RateLimiter;
 import com.cocode.popops.model.Message;
 import com.cocode.popops.model.MessageType;
 import com.cocode.popops.model.UpdateMode;
@@ -24,10 +25,6 @@ public final class MessageRouter {
     private MessageRouter() {
     }
 
-    /**
-     * Called automatically when the app opens or resumes to process any messages
-     * that were saved locally because they were scheduled in the future.
-     */
     public static void checkScheduledMessages() {
         try {
             List<JSONObject> scheduled = PopupStateStore.getScheduledMessages();
@@ -36,6 +33,9 @@ public final class MessageRouter {
                 if (m != null && shouldShow(m)) {
                     Log.d(TAG, "Routing saved scheduled message " + m.messageId + " to renderer.");
                     Renderer.render(m);
+
+                    // Exit loop! Only show ONE message per cycle to prevent UI stacking.
+                    return;
                 }
             }
         } catch (Exception e) {
@@ -50,6 +50,9 @@ public final class MessageRouter {
             if (shouldShow(m)) {
                 Log.d(TAG, "Routing message " + m.messageId + " to renderer.");
                 Renderer.render(m);
+
+                // Exit loop! Only show ONE message per cycle to prevent UI stacking.
+                return;
             }
         }
     }
@@ -60,8 +63,15 @@ public final class MessageRouter {
             return false;
         }
 
-        // 0. Scheduling Check
-        // If a message has timestamps, ensure it is within bounds.
+        boolean isImmediateUpdate = (m.type == MessageType.APP_UPDATE && m.updateMode == UpdateMode.IMMEDIATE);
+
+        // 0. Display Rate Limit Check (UX Protection)
+        // Skip display cool-down ONLY for Immediate Updates (because they are critical)
+        if (!isImmediateUpdate && !RateLimiter.canShow()) {
+            return false;
+        }
+
+        // 1. Scheduling Check
         if (m.startAt != null && m.endAt != null && m.startAt > 0 && m.endAt > 0) {
             long now = System.currentTimeMillis();
 
@@ -74,12 +84,11 @@ public final class MessageRouter {
                 PopupStateStore.saveScheduledMessage(m.messageId, m.rawJson);
                 return false;
             } else {
-                // Time is perfectly within bounds! Ensure it is removed from the local holding cache.
                 PopupStateStore.removeScheduledMessage(m.messageId);
             }
         }
 
-        // 1. Topic Filtering
+        // 2. Topic Filtering
         if (m.topic != null) {
             String safeTopic = m.topic.trim();
             if (!safeTopic.isEmpty() &&
@@ -93,7 +102,7 @@ public final class MessageRouter {
             }
         }
 
-        // 2. Target Version Filtering (For non-app-update messages)
+        // 3. Target Version Filtering (For non-app-update messages)
         if (m.type != MessageType.APP_UPDATE) {
             if (m.targetVersion != null) {
                 String safeVersion = m.targetVersion.trim();
@@ -109,7 +118,7 @@ public final class MessageRouter {
             }
         }
 
-        // 3. App Update Filtering
+        // 4. App Update Filtering
         if (m.type == MessageType.APP_UPDATE) {
             if (!VersionUtils.isUpdateRequired(PopOpsEnvironment.appVersion, m.newAppVersion)) {
                 Log.d(TAG, "Filtered: App update not required.");
@@ -117,9 +126,7 @@ public final class MessageRouter {
             }
         }
 
-        // 4. Dedupe Check
-        boolean isImmediateUpdate = (m.type == MessageType.APP_UPDATE && m.updateMode == UpdateMode.IMMEDIATE);
-
+        // 5. Dedupe Check
         if (!isImmediateUpdate) {
             if (PopupStateStore.isShown(m.messageId)) {
                 Log.d(TAG, "Filtered: Message " + m.messageId + " has already been shown.");

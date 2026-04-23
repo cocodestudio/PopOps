@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.library)
+    id 'maven-publish'
 }
 
 android {
@@ -8,165 +9,45 @@ android {
 
     defaultConfig {
         minSdk = 26
-
+        targetSdk 36
         versionCode = 1
         versionName = "1.0.0"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
     }
 
     buildTypes {
-        debug {
-            // Debug build - no ProGuard for easier debugging
-            minifyEnabled = false
-            debuggable = true
-        }
-
         release {
-            minifyEnabled = true
-            proguardFiles  getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            shrinkResources = false
-
-            // Disable debugging
-            debuggable = false
-            jniDebuggable = false
+            minifyEnabled = false
         }
     }
-    buildFeatures {
-        buildConfig = true
+
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
     }
+
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
-    }
-    // Packaging options
-    packagingOptions {
-        resources {
-            excludes += ['/META-INF/{AL2.0,LGPL2.1}']
-        }
-    }
-
-    // Lint options
-    lint {
-        abortOnError = false
-        checkReleaseBuilds = true
-        // Ignore lint errors that are not critical
-        disable 'InvalidPackage'
     }
 }
 
 dependencies {
     implementation libs.appcompat
-    implementation libs.material
-    testImplementation libs.junit
-    androidTestImplementation libs.ext.junit
-    androidTestImplementation libs.espresso.core
 }
 
-// ✅ Task to verify ProGuard setup
-tasks.register('verifyProguardSetup') {
-    doLast {
-        def consumerRulesFile = file('consumer-rules.pro')
-        def proguardRulesFile = file('proguard-rules.pro')
-
-        if (!consumerRulesFile.exists()) {
-            throw new GradleException("❌ consumer-rules.pro not found!")
-        }
-        if (!proguardRulesFile.exists()) {
-            throw new GradleException("❌ proguard-rules.pro not found!")
-        }
-
-        println "✅ ProGuard files verified"
-        println "   - proguard-rules.pro: ${proguardRulesFile.length()} bytes"
-        println "   - consumer-rules.pro: ${consumerRulesFile.length()} bytes"
-    }
-}
-
-// ✅ Task to check AAR size
-tasks.register('checkAarSize') {
-    doLast {
-        def releaseAar = file("build/outputs/aar/${project.name}-release.aar")
-        if (releaseAar.exists()) {
-            def sizeKB = releaseAar.length() / 1024
-            println "✅ Release AAR size: ${String.format('%.2f', sizeKB)} KB"
-
-            if (sizeKB > 500) {
-                println "⚠️  Warning: AAR is larger than expected (>500KB)"
-            } else {
-                println "✅ AAR size is optimal"
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.release
+                groupId = 'com.github.cocodestudio'
+                artifactId = 'popops'
+                version = '1.0.0'
             }
-        } else {
-            println "❌ Release AAR not found. Run: ./gradlew assembleRelease"
         }
-    }
-}
-
-// ✅ Task to extract and verify mapping file
-tasks.register('checkProguardMapping') {
-    doLast {
-        def mappingFile = file('build/outputs/mapping/release/mapping.txt')
-        if (mappingFile.exists()) {
-            println "✅ ProGuard mapping file found"
-
-            def lines = mappingFile.readLines()
-            println "   Total mappings: ${lines.size()} lines"
-
-            // Check if public API is kept
-            def notifyXKept = lines.any { it.contains('com.cocode.notifyx.core.NotifyX ->') }
-            if (notifyXKept) {
-                println "   ✅ Public API (NotifyX) is preserved"
-            } else {
-                println "   ⚠️  Warning: NotifyX class may be obfuscated"
-            }
-
-            // Check if internal classes are obfuscated
-            def hasObfuscation = lines.any { it.matches('.*-> [a-z]\\.[a-z]\\.[a-z].*') }
-            if (hasObfuscation) {
-                println "   ✅ Internal classes are obfuscated"
-            } else {
-                println "   ⚠️  Warning: Classes may not be obfuscated"
-            }
-        } else {
-            println "❌ Mapping file not found. Run: ./gradlew assembleRelease"
-        }
-    }
-}
-
-// ✅ Combined verification task
-tasks.register('verifyReleaseBuild') {
-    dependsOn 'assembleRelease'
-    finalizedBy 'verifyProguardSetup', 'checkAarSize', 'checkProguardMapping'
-
-    doLast {
-        println ""
-        println "════════════════════════════════════════════"
-        println "   NotifyX SDK Release Build Verification   "
-        println "════════════════════════════════════════════"
-    }
-}
-
-// ✅ Task to copy mapping file with version
-tasks.register('backupMappingFile') {
-    doLast {
-        def mappingFile = file('build/outputs/mapping/release/mapping.txt')
-        def version = android.defaultConfig.versionName
-        def backupFile = file("mappings/mapping-v${version}.txt")
-
-        if (mappingFile.exists()) {
-            backupFile.parentFile.mkdirs()
-            mappingFile.renameTo(backupFile)
-            println "✅ Mapping file backed up to: mappings/mapping-v${version}.txt"
-            println "   Keep this file for deobfuscating crash reports!"
-        } else {
-            println "❌ Mapping file not found"
-        }
-    }
-}
-
-// Run backup after release build
-tasks.configureEach { task ->
-    if (task.name == 'assembleRelease') {
-        task.finalizedBy 'backupMappingFile'
     }
 }

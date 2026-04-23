@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * High-level state: shown IDs, topics, and offline scheduled payloads stored securely.
+ * High-level state: rate limits, shown IDs, topics, and offline scheduled payloads.
  */
 public final class PopupStateStore {
     private static final Object LOCK = new Object();
@@ -39,6 +39,39 @@ public final class PopupStateStore {
     private static void saveRoot(JSONObject root) throws Exception {
         byte[] enc = CryptoManager.encrypt(root.toString().getBytes(StandardCharsets.UTF_8));
         SecureFileStore.write(enc);
+    }
+
+    // --- Rate Limiting Timestamps ---
+    public static long getLastPollTime() {
+        synchronized (LOCK) {
+            try { return loadRoot().optLong("last_poll", 0L); } catch (Exception e) { return 0L; }
+        }
+    }
+
+    public static void setLastPollTime(long timestamp) {
+        synchronized (LOCK) {
+            try {
+                JSONObject root = loadRoot();
+                root.put("last_poll", timestamp);
+                saveRoot(root);
+            } catch (Exception ignored) {}
+        }
+    }
+
+    public static long getLastShowTime() {
+        synchronized (LOCK) {
+            try { return loadRoot().optLong("last_show", 0L); } catch (Exception e) { return 0L; }
+        }
+    }
+
+    public static void setLastShowTime(long timestamp) {
+        synchronized (LOCK) {
+            try {
+                JSONObject root = loadRoot();
+                root.put("last_show", timestamp);
+                saveRoot(root);
+            } catch (Exception ignored) {}
+        }
     }
 
     // --- Shown Deduplication Configs ---
@@ -78,10 +111,13 @@ public final class PopupStateStore {
                     JSONArray out = new JSONArray();
                     for (String s : set) out.put(s);
                     root.put("shown", out);
+
+                    // Automatically update display rate limit whenever a message is successfully marked as shown
+                    root.put("last_show", System.currentTimeMillis());
+
                     saveRoot(root);
                 }
-            } catch (Exception ignored) {
-            }
+            } catch (Exception ignored) {}
         }
     }
 
@@ -119,8 +155,7 @@ public final class PopupStateStore {
                     root.put("topics", out);
                     saveRoot(root);
                 }
-            } catch (Exception ignored) {
-            }
+            } catch (Exception ignored) {}
         }
     }
 
@@ -140,8 +175,7 @@ public final class PopupStateStore {
                     root.put("topics", out);
                     saveRoot(root);
                 }
-            } catch (Exception ignored) {
-            }
+            } catch (Exception ignored) {}
         }
     }
 
@@ -159,7 +193,6 @@ public final class PopupStateStore {
                 JSONObject scheduled = root.optJSONObject("scheduled");
                 if (scheduled == null) scheduled = new JSONObject();
 
-                // Save it keyed by the messageId to automatically overwrite/update edits
                 scheduled.put(messageId, msgJson);
                 root.put("scheduled", scheduled);
                 saveRoot(root);
