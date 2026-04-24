@@ -12,6 +12,7 @@ import android.net.Uri;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -216,6 +217,17 @@ public final class DialogRenderer implements PresentationRenderer {
 
                 if (!activity.isFinishing() && !activity.isDestroyed()) {
                     d.show();
+
+                    // --- APPLY PROGRAMMATIC WIDTH FIX HERE ---
+                    Window window = d.getWindow();
+                    if (window != null) {
+                        android.util.DisplayMetrics metrics = activity.getResources().getDisplayMetrics();
+                        // Force width to 85% of screen
+                        int width = (int) (metrics.widthPixels * 0.85);
+                        window.setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);
+                    }
+                    // -----------------------------------------
+
                 } else {
                     currentlyShowingMessageId = null;
                 }

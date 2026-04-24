@@ -32,6 +32,7 @@ dependencies {
     implementation libs.appcompat
     implementation libs.material
     testImplementation libs.junit
+    implementation(platform(libs.kotlin.bom))
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
 }

@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -25,7 +24,8 @@
                 android:importantForAccessibility="no"
                 android:padding="16dp"
                 android:src="@drawable/ic_download"
-                app:tint="@color/popops_md_theme_onPrimaryContainer" />
+                android:fontFamily="@font/sora_medium"
+                android:tint="@color/popops_md_theme_onPrimaryContainer" />
         </FrameLayout>
 
         <TextView
@@ -50,7 +50,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="19dp"
-        android:fontFamily="sans-serif-medium"
+        android:fontFamily="@font/sora_semi_bold"
         android:text="@string/announcement_title"
         android:textColor="@color/popops_md_theme_onSurface"
         android:textSize="15sp"
@@ -64,6 +64,7 @@
         android:gravity="center"
         android:lineSpacingMultiplier="1.2"
         android:paddingHorizontal="19dp"
+        android:fontFamily="@font/sora_medium"
         android:text="@string/announcement_description"
         android:textColor="@color/popops_md_theme_outline"
         android:textSize="12sp"
@@ -86,10 +87,10 @@
             android:padding="13dp"
             android:stateListAnimator="@null"
             android:text="@string/announcement_btn_secondary"
+            android:fontFamily="@font/sora_semi_bold"
             android:textAllCaps="false"
             android:textColor="@color/popops_md_theme_onPrimaryContainer"
             android:textSize="11sp"
-            android:textStyle="bold"
             tools:ignore="VisualLintButtonSize" />
 
         <androidx.appcompat.widget.AppCompatButton
@@ -100,12 +101,12 @@
             android:background="@drawable/button_primary_blue"
             android:gravity="center"
             android:padding="13dp"
+            android:fontFamily="@font/sora_semi_bold"
             android:stateListAnimator="@null"
             android:text="@string/announcement_btn_primary"
             android:textAllCaps="false"
             android:textColor="@color/popops_md_theme_onPrimary"
             android:textSize="11sp"
-            android:textStyle="bold"
             tools:ignore="VisualLintButtonSize" />
     </LinearLayout>
 
