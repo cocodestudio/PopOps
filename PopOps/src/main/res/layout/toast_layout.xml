@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/toastContainer"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -7,7 +8,7 @@
     android:elevation="8dp"
     android:padding="16dp">
 
-    <ImageView
+    <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/toastIcon"
         android:layout_width="24dp"
         android:layout_height="24dp"
@@ -15,7 +16,7 @@
         android:layout_centerVertical="true"
         android:importantForAccessibility="no" />
 
-    <ImageView
+    <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/toastClose"
         android:layout_width="24dp"
         android:layout_height="24dp"
@@ -23,9 +24,9 @@
         android:layout_alignParentEnd="true"
         android:layout_centerVertical="true"
         android:layout_marginStart="12dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:src="@drawable/ic_close"
-        android:tint="@color/popops_md_theme_outlineVariant" />
+        android:background="@android:color/transparent"
+        app:srcCompat="@drawable/ic_close"
+        app:tint="@color/popops_md_theme_outlineVariant" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -35,7 +36,7 @@
         android:layout_marginStart="12dp"
         android:orientation="vertical">
 
-        <TextView
+        <androidx.appcompat.widget.AppCompatTextView
             android:id="@+id/toastTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -43,7 +44,7 @@
             android:textSize="16sp"
             android:fontFamily="@font/sora_semi_bold" />
 
-        <TextView
+        <androidx.appcompat.widget.AppCompatTextView
             android:id="@+id/toastSubtitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

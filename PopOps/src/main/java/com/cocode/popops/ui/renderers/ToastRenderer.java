@@ -15,10 +15,10 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationSet;
 import android.view.animation.TranslateAnimation;
 import android.widget.FrameLayout;
-import android.widget.ImageView;
 import android.widget.RelativeLayout;
-import android.widget.TextView;
 
+import androidx.appcompat.widget.AppCompatImageView;
+import androidx.appcompat.widget.AppCompatTextView;
 import androidx.core.content.ContextCompat;
 
 import com.cocode.popops.R;
@@ -62,11 +62,11 @@ public final class ToastRenderer implements PresentationRenderer {
                     LayoutInflater inflater = LayoutInflater.from(activity);
                     View toastView = inflater.inflate(R.layout.toast_layout, null);
 
-                    // Setup views
-                    ImageView iconView = toastView.findViewById(R.id.toastIcon);
-                    TextView titleView = toastView.findViewById(R.id.toastTitle);
-                    TextView subtitleView = toastView.findViewById(R.id.toastSubtitle);
-                    ImageView closeButton = toastView.findViewById(R.id.toastClose);
+                    // Setup views explicitly casting to AppCompat variants to match the new XML
+                    AppCompatImageView iconView = toastView.findViewById(R.id.toastIcon);
+                    AppCompatTextView titleView = toastView.findViewById(R.id.toastTitle);
+                    AppCompatTextView subtitleView = toastView.findViewById(R.id.toastSubtitle);
+                    AppCompatImageView closeButton = toastView.findViewById(R.id.toastClose);
 
                     // Layout Change: Cast to RelativeLayout instead of ConstraintLayout
                     RelativeLayout container = toastView.findViewById(R.id.toastContainer);
