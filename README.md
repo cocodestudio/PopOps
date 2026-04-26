@@ -25,7 +25,7 @@ Add the following dependency to your `build.gradle` file:
 
 ```gradle
 dependencies {
-    implementation "com.github.cocodestudio:PopOps:1.0.2"
+    implementation "com.github.cocodestudio:PopOps:1.0.5"
 }
 ```
 
